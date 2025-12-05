@@ -3,7 +3,7 @@ title: "FCC-BDC Availability Download"
 author: "Christine Parker"
 format: html
 editor: visual
-last updated: 21 Nov 2024
+date: today()
 ---
 
 # Set up environment
@@ -81,7 +81,7 @@ list_availability_files <- function(as_of_date) {
 This function does the heavy lifting.
 
 ```{r debug version download}
-download_file <- function(file_id, file_name, file_type = "1", download_path = download_path)#replace with "your/download/path/"
+download_file <- function(file_id, file_name, file_type = "1", download_path = "C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BDC/BDC_J25")#replace with "your/download/path/"
   {
   # Ensure the download path exists
   if (!dir.exists(download_path)) {
@@ -132,7 +132,7 @@ This is the part of the script where you'll put all those functions to use! If y
 dates <- get_as_of_dates(username, token)
 
 # Step 2: Select the latest date (or prompt user) - may need to edit number as the FCC is sequentially ordering the releases as of Nov 2024
-latest_date <- dates$data[[4]]$as_of_date
+latest_date <- dates$data[[7]]$as_of_date
 
 # Step 3: List files for the selected date
 availability_files <- list_availability_files(latest_date)
@@ -145,17 +145,17 @@ avail_data_list <- availability_files[["data"]] %>% map_dfr(~ .x) %>%
 # Iterate over all file_id values in avail_data_list
 for (i in 1:nrow(avail_data_list)) {
   tryCatch({
-    # Extract file_id and file_name for the current row
     file_id <- avail_data_list$file_id[i]
     file_name <- avail_data_list$file_name[i]
 
-    # Call the download_file function
     download_file(file_id, file_name)
+
+    Sys.sleep(0.5)  # prevent rate-limiting
   }, error = function(e) {
-    # Handle errors gracefully and log them
     message(paste("Error downloading file_id:", file_id, "-", e$message))
   })
 }
 
 message("All downloads attempted.")
+
 ```

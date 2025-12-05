@@ -1,0 +1,143 @@
+---
+title: "BFM_download"
+author: "Christine Parker"
+format: html
+editor: visual
+---
+
+```{r setup, include=FALSE}
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(glue)
+library(purrr)
+
+# Set credentials (replace with actual values)
+# User credentials (replace with your username and token)
+hash_value <- Sys.getenv("FCC_API_TOKEN")
+username <- Sys.getenv("FCC_USERNAME")
+
+
+# API endpoints
+
+list_url <- "https://bdc.fcc.gov/api/public/fundingmap/downloads/listFundingData"
+
+download_base <- "https://bdc.fcc.gov/api/public/fundingmap/downloads/downloadFile/"
+```
+
+# Step 1: Get List of Downloadable Files
+
+```{r}
+response <- GET(
+  url = list_url,
+  add_headers(username = username, hash_value = token)
+)
+
+# Check status and parse
+if (status_code(response) != 200) {
+  stop("API call failed with status: ", status_code(response))
+}
+
+funding_list <- fromJSON(content(response, "text", encoding = "UTF-8"))$data
+
+# Preview the first few files
+head(select(funding_list, file_id, agency_name, program_name, file_name, data_type, category), 10)
+
+```
+
+## Step 2: Filter Desired Files (Optional)
+
+You can filter by program, agency, or data type if needed.
+
+```{r}
+# Example: Get files from FCC's "Bringing Puerto Rico Together" program
+selected_files <- funding_list %>%
+  filter(data_type == "Project")
+
+selected_files
+
+```
+
+## Step 3: Download the Selected File(s)
+
+```{r}
+# Create a download directory if it doesn't exist
+dir.create("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/", showWarnings = FALSE)
+
+# Initialize vector to track failed downloads
+failed_downloads <- c()
+
+# Download each selected file with rate limiting and failure tracking
+walk(selected_files$file_id, function(id) {
+  download_url <- glue("{download_base}{id}")
+  
+  message("Downloading file ID: ", id)
+  
+  resp <- GET(
+    url = download_url,
+    add_headers(username = username, hash_value = hash_value),
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/file_{id}.zip"), overwrite = TRUE)
+  )
+  
+  if (status_code(resp) == 200) {
+    message("Download complete for file ID: ", id)
+  } else {
+    message("Failed to download file ID: ", id, ". Status: ", status_code(resp))
+    failed_downloads <<- c(failed_downloads, id)  # Track failed downloads
+  }
+  
+  Sys.sleep(6)  # Rate limiting: 10 calls per minute
+})
+
+# Summary of failures
+if (length(failed_downloads) > 0) {
+  message("The following file IDs failed to download:")
+  print(failed_downloads)
+} else {
+  message("All files downloaded successfully.")
+}
+
+
+```
+
+# Step 4: Retry failed downloads
+
+```{r}
+
+failed_downloads2 <- as_tibble(failed_downloads2) %>% rename("file_id" = "value")
+#failed_downloads <- failed_downloads %>% rename("file_id" = "id")
+
+# Initialize vector to track failed downloads
+failed_downloads3 <- c()
+
+# Download each selected file with rate limiting and failure tracking
+walk(failed_downloads$file_id, function(id) {
+  download_url <- glue("{download_base}{id}")
+  
+  message("Downloading file ID: ", id)
+  
+  resp <- GET(
+    url = download_url,
+    add_headers(username = username, hash_value = hash_value),
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/file_{id}.zip"), overwrite = TRUE)
+  )
+  
+  if (status_code(resp) == 200) {
+    message("Download complete for file ID: ", id)
+  } else {
+    message("Failed to download file ID: ", id, ". Status: ", status_code(resp))
+    failed_downloads2 <<- c(failed_downloads2, id)  # Track failed downloads
+  }
+  
+  Sys.sleep(6)  # Rate limiting: 10 calls per minute
+})
+
+# Summary of failures
+if (length(failed_downloads3) > 0) {
+  message("The following file IDs failed to download:")
+  print(failed_downloads2)
+} else {
+  message("All files downloaded successfully.")
+}
+
+```
