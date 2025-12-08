@@ -16,7 +16,7 @@ library(jsonlite)
 library(tidyverse)
 
 # API base URL
-base_url <- "https://broadbandmap.fcc.gov/api/public/map/downloads"
+base_url <- "https://bdc.fcc.gov/api/public/map/downloads"
 
 # User credentials (replace with your username and token)
 token <- Sys.getenv("FCC_API_TOKEN")
@@ -33,7 +33,7 @@ This will create a function that after running will provide you with a list of t
 ```{r create function to get as of dates}
 get_as_of_dates <- function(username, token) {
   #create the url where you'll send your request
-  url <- paste0("https://broadbandmap.fcc.gov", "/api/public/map/listAsOfDates")
+  url <- paste0("https://bdc.fcc.gov", "/api/public/map/listAsOfDates")
   
 # Make the GET request, where your username and token are included in the header info to give you access
   res <- GET(
@@ -81,45 +81,40 @@ list_availability_files <- function(as_of_date) {
 This function does the heavy lifting.
 
 ```{r debug version download}
-download_file <- function(file_id, file_name, file_type = "1", download_path = "C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BDC/BDC_J25")#replace with "your/download/path/"
-  {
-  # Ensure the download path exists
+download_file <- function(file_id, file_name, file_type = "1",
+                          username = Sys.getenv("FCC_USERNAME"),
+                          hash_value = Sys.getenv("FCC_HASH"),
+                          download_path = "C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BDC/BDC_J25") {
+
   if (!dir.exists(download_path)) {
     dir.create(download_path, recursive = TRUE)
   }
 
-  # Sanitize the file name to ensure it's valid
-  sanitized_file_name <- gsub("[^A-Za-z0-9._-]", "_", file_name) #Replace invalid characters
-  full_file_name <- paste0(download_path, sanitized_file_name, ".zip")
+  sanitized_file_name <- gsub("[^A-Za-z0-9._-]", "_", file_name)
+  full_file_name <- file.path(download_path, paste0(sanitized_file_name, ".zip"))
 
-  # Construct the URL
-  url <- paste0("https://broadbandmap.fcc.gov/nbm/map/api/getNBMDataDownloadFile/", file_id, "/", file_type)
+  url <- paste0("https://bdc.fcc.gov/api/public/map/downloads/downloadFile/availability/", file_id, "/", file_type)
 
-  # Debug: Print file name and URL (can comment out these if not needed)
   print(paste("File path:", full_file_name))
   print(paste("URL:", url))
 
-  # Perform the GET request
-  # !! If you run into issues here, inspect a link on the download page to check that the header information hasn't changed !!
-  res <- GET(
+  res <- httr::GET(
     url,
-    add_headers(
-      `accept` = "application/json, text/plain, */*",
-      `accept-encoding` = "gzip, deflate, br, zstd",
-      `referer` = "https://broadbandmap.fcc.gov/data-download",
-      `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    httr::add_headers(
+      username = username,
+      hash_value = hash_value,
+      `user-agent` = "Mozilla/5.0"
     ),
-    write_disk(full_file_name, overwrite = TRUE)  # Save the file
+    httr::write_disk(full_file_name, overwrite = TRUE)
   )
 
-  # Check response status
-  if (http_status(res)$category != "Success") {
-    print(content(res, "text"))  # Print server response for debugging
-    stop(paste("Error:", http_status(res)$message))
+  if (httr::http_error(res)) {
+    stop(paste("Error downloading file_id:", file_id, "-", httr::http_status(res)$message))
   }
 
   message(paste("Downloaded:", full_file_name))
 }
+
 
 ```
 
@@ -148,7 +143,9 @@ for (i in 1:nrow(avail_data_list)) {
     file_id <- avail_data_list$file_id[i]
     file_name <- avail_data_list$file_name[i]
 
-    download_file(file_id, file_name)
+    download_file(file_id, file_name, 
+                  username = username, 
+                  hash_value = token)
 
     Sys.sleep(0.5)  # prevent rate-limiting
   }, error = function(e) {
@@ -157,5 +154,6 @@ for (i in 1:nrow(avail_data_list)) {
 }
 
 message("All downloads attempted.")
+
 
 ```
