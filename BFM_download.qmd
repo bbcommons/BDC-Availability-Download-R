@@ -30,7 +30,7 @@ download_base <- "https://bdc.fcc.gov/api/public/fundingmap/downloads/downloadFi
 ```{r}
 response <- GET(
   url = list_url,
-  add_headers(username = username, hash_value = token)
+  add_headers(username, hash_value)
 )
 
 # Check status and parse
@@ -38,10 +38,43 @@ if (status_code(response) != 200) {
   stop("API call failed with status: ", status_code(response))
 }
 
-funding_list <- fromJSON(content(response, "text", encoding = "UTF-8"))$data
+funding_list <- fromJSON(content(data_list, "text", encoding = "UTF-8"))$data
 
 # Preview the first few files
 head(select(funding_list, file_id, agency_name, program_name, file_name, data_type, category), 10)
+
+```
+
+```{r get as of dates revised}
+get_data_list <- function(username, token) {
+  #create the url where you'll send your request
+  url <- paste0("https://bdc.fcc.gov",
+                "/api/public/fundingmap/downloads/listFundingData")
+  
+# Make the GET request, where your username and token are included in the header info to give you access
+  response <- GET(
+    url,
+    add_headers(
+      username = username,
+      hash_value = token
+    )
+  )
+  
+##Could comment-out the section below if you don't want to have the debugging steps run   
+# Check for successful response
+  if (status_code(response) == 200) {
+# Print the content of the response for debugging
+    content_res <- content(response, "parsed")
+    print(content_res)
+    return(content_res)  # Return the parsed content
+  } else {
+# If not successful, print the error status code and message
+    print(paste("Error:", status_code(response)))
+    print(content(response, "text"))
+    return(NULL)
+  }
+}
+
 
 ```
 
@@ -60,15 +93,23 @@ selected_files
 
 ## Step 3: Download the Selected File(s)
 
-```{r}
+```{r get fild ids, echo=FALSE}
+# Step 1: use function to get dates
+full_data_list <- get_data_list(username, hash_value)
+
+# Step 3: List files for the selected date
+file_ids_df <- map_dfr(full_data_list$data, ~ tibble(file_id = .x$file_id))
+```
+
+```{r get bfm files, echo=FALSE}
 # Create a download directory if it doesn't exist
-dir.create("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/", showWarnings = FALSE)
+dir.create("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/", showWarnings = FALSE)
 
 # Initialize vector to track failed downloads
 failed_downloads <- c()
 
 # Download each selected file with rate limiting and failure tracking
-walk(selected_files$file_id, function(id) {
+walk(file_ids_df$file_id, function(id) {
   download_url <- glue("{download_base}{id}")
   
   message("Downloading file ID: ", id)
@@ -76,7 +117,7 @@ walk(selected_files$file_id, function(id) {
   resp <- GET(
     url = download_url,
     add_headers(username = username, hash_value = hash_value),
-    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/file_{id}.zip"), overwrite = TRUE)
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/file_{id}.zip"), overwrite = TRUE)
   )
   
   if (status_code(resp) == 200) {
@@ -104,14 +145,14 @@ if (length(failed_downloads) > 0) {
 
 ```{r}
 
-failed_downloads2 <- as_tibble(failed_downloads2) %>% rename("file_id" = "value")
+failed_downloads3 <- as_tibble(failed_downloads3) %>% rename("file_id" = "value")
 #failed_downloads <- failed_downloads %>% rename("file_id" = "id")
 
 # Initialize vector to track failed downloads
-failed_downloads3 <- c()
+failed_downloads4 <- c()
 
 # Download each selected file with rate limiting and failure tracking
-walk(failed_downloads$file_id, function(id) {
+walk(failed_downloads3$file_id, function(id) {
   download_url <- glue("{download_base}{id}")
   
   message("Downloading file ID: ", id)
@@ -119,23 +160,23 @@ walk(failed_downloads$file_id, function(id) {
   resp <- GET(
     url = download_url,
     add_headers(username = username, hash_value = hash_value),
-    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_d24_21jun2025/file_{id}.zip"), overwrite = TRUE)
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/file_{id}.zip"), overwrite = TRUE)
   )
   
   if (status_code(resp) == 200) {
     message("Download complete for file ID: ", id)
   } else {
     message("Failed to download file ID: ", id, ". Status: ", status_code(resp))
-    failed_downloads2 <<- c(failed_downloads2, id)  # Track failed downloads
+    failed_downloads4 <<- c(failed_downloads4, id)  # Track failed downloads
   }
   
-  Sys.sleep(6)  # Rate limiting: 10 calls per minute
+  Sys.sleep(10)  # Rate limiting: 10s between calls
 })
 
 # Summary of failures
-if (length(failed_downloads3) > 0) {
+if (length(failed_downloads4) > 0) {
   message("The following file IDs failed to download:")
-  print(failed_downloads2)
+  print(failed_downloads4)
 } else {
   message("All files downloaded successfully.")
 }
