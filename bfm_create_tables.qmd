@@ -1,0 +1,75 @@
+---
+title: "BFM_create_tables"
+author: "Christine Parker"
+format: html
+editor: visual
+---
+
+## Quarto
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(RPostgres)
+library(DBI)
+
+con <- RPostgres::dbConnect(drv = Postgres(), 
+                 port = "5433",
+                 user = "postgres",
+                 password = "ilsrcbn21",
+                 dbname = "ilsr_cbn")
+```
+
+## Load Sample Files
+
+```{r table structure files}
+#area attributes
+area_attr <- read.csv("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/unzipped/area_attributes/areaattributes_program6_J25_10dec2025.csv") %>% 
+  mutate(program_id = as.character(program_id),
+         project_id = as.character(project_id),
+         tribal_id = as.character(tribal_id),
+         tribal_location_pct = as.character(tribal_location_pct),
+         tribal_funding = as.character(tribal_funding))
+
+#location_list
+loc_list <- read.csv("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/unzipped/location_list/locationlist_program11_D24_02oct2025.csv") %>% 
+  mutate(program_id = as.character(program_id),
+         project_id = as.character(project_id),
+         providerid = as.character(providerid),
+         brandname = as.character(brandname),
+         location_id = as.character(location_id),
+         latitude = as.character(latitude),
+         longitude = as.character(longitude),
+         cai_type = as.character(cai_type)) %>%
+  rename("brand_name" = "brandname", "provider_id" = "providerid")
+
+
+#location_attributes
+loc_attr <- read.csv("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/unzipped/location_attributes/locationattributes_program18_project9583_J25_10dec2025.csv") %>% 
+  mutate(program_id = as.character(program_id),
+         project_id = as.character(project_id),
+         project_cost = as.integer(project_cost),
+         tribal_id = as.character(tribal_id),
+         tribal_location_pct = as.character(tribal_location_pct),
+         tribal_funding = as.character(tribal_funding))
+```
+
+## Area Attributes
+
+```{r create table area_attributes}
+
+dbWriteTable(con, name = Id(schema = "raw_fcc", table = "bfm_area_attributes") , area_attr[0, ])
+```
+
+## Location List
+
+```{r create table location_list}
+
+
+dbWriteTable(con, name = Id(schema = "raw_fcc", table = "bfm_location_list") , loc_list[0, ])
+```
+
+```{r disconnect}
+dbDisconnect(con)
+
+```

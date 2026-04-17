@@ -16,7 +16,7 @@ library(purrr)
 # User credentials (replace with your username and token)
 hash_value <- Sys.getenv("FCC_API_TOKEN")
 username <- Sys.getenv("FCC_USERNAME")
-
+ 
 
 # API endpoints
 
@@ -38,7 +38,7 @@ if (status_code(response) != 200) {
   stop("API call failed with status: ", status_code(response))
 }
 
-funding_list <- fromJSON(content(data_list, "text", encoding = "UTF-8"))$data
+funding_list <- fromJSON(content(full_data_list, "text", encoding = "UTF-8"))$data
 
 # Preview the first few files
 head(select(funding_list, file_id, agency_name, program_name, file_name, data_type, category), 10)
@@ -103,7 +103,7 @@ file_ids_df <- map_dfr(full_data_list$data, ~ tibble(file_id = .x$file_id))
 
 ```{r get bfm files, echo=FALSE}
 # Create a download directory if it doesn't exist
-dir.create("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/", showWarnings = FALSE)
+dir.create("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_6mar26/", showWarnings = FALSE)
 
 # Initialize vector to track failed downloads
 failed_downloads <- c()
@@ -117,7 +117,7 @@ walk(file_ids_df$file_id, function(id) {
   resp <- GET(
     url = download_url,
     add_headers(username = username, hash_value = hash_value),
-    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/file_{id}.zip"), overwrite = TRUE)
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_6mar26/file_{id}.zip"), overwrite = TRUE)
   )
   
   if (status_code(resp) == 200) {
@@ -160,7 +160,7 @@ walk(failed_downloads3$file_id, function(id) {
   resp <- GET(
     url = download_url,
     add_headers(username = username, hash_value = hash_value),
-    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_7jan26/file_{id}.zip"), overwrite = TRUE)
+    write_disk(glue("C:/Users/chris/ILSR Dropbox/Christine Parker/Christine Parker/RawData/BFM/bfm_j25_6mar26/file_{id}.zip"), overwrite = TRUE)
   )
   
   if (status_code(resp) == 200) {
